@@ -10,6 +10,7 @@ export default function Home() {
         "ActiveItem",
         query.limit(10).descending("tokenId")
     )
+
     return (
         <div className="container mx-auto">
             <h1 className="py-4 px-4 font-bold text-2xl">Recently Listed</h1>
