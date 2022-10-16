@@ -34,7 +34,7 @@ export default function UpdateListingModal({
         params: {
             nftAddress: nftAddress,
             tokenId: tokenId,
-            newPrice: ethers.utils.parseEther(priceToUpdateListingWith || 0),
+            newPrice: ethers.utils.parseEther(priceToUpdateListingWith || "0"),
         },
     })
 

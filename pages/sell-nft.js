@@ -1,24 +1,25 @@
 import Head from "next/head"
 import Image from "next/image"
 import styles from "../styles/Home.module.css"
-import { Form, useNotification } from "web3uikit"
+import { Form, useNotification, Button } from "web3uikit"
+import { useMoralis, useWeb3Contract } from "react-moralis"
 import { ethers } from "ethers"
 import nftAbi from "../constants/BasicNft.json"
-import { useMoralis, useWeb3Contract } from "react-moralis"
 import nftMarketplaceAbi from "../constants/NftMarketplace.json"
 import networkMapping from "../constants/networkMapping.json"
 import { useEffect, useState } from "react"
 
 export default function Home() {
-    const { chainId } = useMoralis()
+    const { chainId, account, isWeb3Enabled } = useMoralis()
     const chainString = chainId ? parseInt(chainId).toString() : "31337"
     const marketplaceAddress = networkMapping[chainString].NftMarketplace[0]
     const dispatch = useNotification()
+    const [proceeds, setProceeds] = useState("0")
 
     const { runContractFunction } = useWeb3Contract()
 
     async function approveAndList(data) {
-        console.log("Approving")
+        console.log("Approving...")
         const nftAddress = data.data[0].inputResult
         const tokenId = data.data[1].inputResult
         const price = ethers.utils.parseUnits(data.data[2].inputResult, "ether").toString()
@@ -35,14 +36,16 @@ export default function Home() {
 
         await runContractFunction({
             params: approveOptions,
-            onSuccess: () => handleApproveSuccess(nftAddress, tokenId, price),
+            onSuccess: (tx) => handleApproveSuccess(tx, nftAddress, tokenId, price),
             onError: (error) => {
                 console.log(error)
             },
         })
     }
 
-    async function handleApproveSuccess(nftAddress, tokenId, price) {
+    async function handleApproveSuccess(tx, nftAddress, tokenId, price) {
+        console.log("Ok! Now time to list")
+        await tx.wait()
         const listOptions = {
             abi: nftMarketplaceAbi,
             contractAddress: marketplaceAddress,
@@ -57,24 +60,20 @@ export default function Home() {
         await runContractFunction({
             params: listOptions,
             onSuccess: () => handleListSuccess(),
-            onError: (error) => {
-                console.log(error)
-            },
+            onError: (error) => console.log(error),
         })
     }
 
-    async function handleListSuccess(tx) {
-        await tx.wait(1)
+    async function handleListSuccess() {
         dispatch({
             type: "success",
-            message: "Item listed!",
-            title: "Item listed!",
+            message: "NFT listing",
+            title: "NFT listed",
             position: "topR",
         })
     }
 
-    const handleWithdrawSuccess = async (tx) => {
-        await tx.wait(1)
+    const handleWithdrawSuccess = () => {
         dispatch({
             type: "success",
             message: "Withdrawing proceeds",
@@ -100,9 +99,7 @@ export default function Home() {
     }
 
     useEffect(() => {
-        if (isWeb3Enabled) {
-            setupUI()
-        }
+        setupUI()
     }, [proceeds, account, isWeb3Enabled, chainId])
 
     return (
@@ -145,7 +142,7 @@ export default function Home() {
                                 params: {},
                             },
                             onError: (error) => console.log(error),
-                            onSuccess: handleWithdrawSuccess,
+                            onSuccess: () => handleWithdrawSuccess,
                         })
                     }}
                     text="Withdraw"
